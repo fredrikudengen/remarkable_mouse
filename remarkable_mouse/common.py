@@ -2,7 +2,6 @@
 
 from collections import namedtuple
 import logging
-import struct
 import sys
 from screeninfo import get_monitors, Monitor
 
@@ -40,9 +39,6 @@ class reMarkable1:
     pen_file = '/dev/input/event0'
     touch_file = '/dev/input/event2'
     button_file = '/dev/input/event1'
-    # struct parsing format for evdev events
-    e_format = '2IHHi'
-    e_sz = struct.calcsize(e_format)
 
     # stylus evdev settings (min, max, resolution)
     touch_x = ev(0, 20967, 100) # touchscreen X coordinate (ABS_MT_POSITION_X)
@@ -69,57 +65,17 @@ class reMarkable1:
     @property
     def pen(self):
         """(paramiko.ChannelFile) pen stream"""
-        cmd = f'dd bs={self.e_sz} if={self.pen_file}'
-        return self.client.exec_command(cmd, bufsize=self.e_sz, timeout=0)[1]
+        return self.client.exec_command('cat ' + self.pen_file)[1]
 
     @property
     def touch(self):
         """(paramiko.ChannelFile) touch stream"""
-        cmd = f'dd bs={self.e_sz} if={self.touch_file}'
-        return self.client.exec_command(cmd, bufsize=self.e_sz, timeout=0)[1]
+        return self.client.exec_command('cat ' + self.pen_file)[1]
 
     @property
     def button(self):
         """(paramiko.ChannelFile) button stream"""
-        cmd = f'dd bs={self.e_sz} if={self.button_file}'
-        return self.client.exec_command(cmd, bufsize=self.e_sz, timeout=0)[1]
-
-    def remap(self, x, y, max_x, max_y, monitor_width,
-            monitor_height, mode, orientation):
-        """remap pen coordinates to screen coordinates
-
-        TODO: consider rewriting this whole function as matrix transform
-        """
-
-        if orientation == 'right':
-            x, y = max_x - x, max_y - y
-        if orientation == 'left':
-            pass
-        if orientation == 'top':
-            x, y = max_y - y, x
-            max_x, max_y = max_y, max_x
-        if orientation == 'bottom':
-            x, y = y, max_x - x
-            max_x, max_y = max_y, max_x
-
-        ratio_width, ratio_height = monitor_width / max_x, monitor_height / max_y
-
-        if mode == 'fill':
-            scaling_x = max(ratio_width, ratio_height)
-            scaling_y = scaling_x
-        elif mode == 'fit':
-            scaling_x = min(ratio_width, ratio_height)
-            scaling_y = scaling_x
-        elif mode == 'stretch':
-            scaling_x = ratio_width
-            scaling_y = ratio_height
-        else:
-            raise NotImplementedError
-
-        return (
-            scaling_x * (x - (max_x - monitor_width / scaling_x) / 2),
-            scaling_y * (y - (max_y - monitor_height / scaling_y) / 2)
-        )
+        return self.client.exec_command('cat ' + self.pen_file)[1]
 
 class reMarkable2(reMarkable1):
     pen_file = '/dev/input/event1'
@@ -127,26 +83,9 @@ class reMarkable2(reMarkable1):
     button_file = '/dev/input/event0'
 
 class reMarkablePro(reMarkable1):
-    r"""
-       rMPro COORDINATES
-
-       PEN         TOUCH
-    +--------+   +--------+
-    | +---X  |   | +---X  |
-    | |      |   | |      |
-    | |      |   | |      |
-    | Y      |   | Y      |
-    |        |   |        |
-    |--------|   |--------|
-    |USB PORT|   |USB PORT|
-    +--------+   +--------+
-    """
-
     pen_file = '/dev/input/event2'
     touch_file = '/dev/input/event3'
     button_file = '/dev/input/event0'
-    e_format = 'I4xI4xHHi'
-    e_sz = struct.calcsize(e_format)
     # stylus evdev settings (min, max, resolution)
     touch_x = ev(0, 2064, 2064) # touchscreen X coordinate (ABS_MT_POSITION_X)
     touch_y = ev(0, 2832, 2832) # touchscreen Y coordinate (ABS_MT_POSITION_Y)
@@ -154,50 +93,6 @@ class reMarkablePro(reMarkable1):
     touch_orient = ev(-127, 127, None) # touch orientation (ABS_MT_ORIENTATION)
     touch_slot = ev(0, 9, None) # tool slot ID (ABS_MT_SLOT)
     touch_tool = ev(0, 2, None) # tool type (ABS_MT_TOOL_TYPE)
-
-    # pen evdev settings (min, max, resolution)
-    pen_x = ev(0, 11180, 2832) # pen X coordinate (ABS_X)
-    pen_y = ev(0, 15340, 2064) # pen Y coordinate (ABS_Y)
-    pen_pressure = ev(0, 4096, None) # pen pressure (ABS_PRESSURE)
-    pen_distance = ev(0, 65535, None) # pen distance from screen (ABS_DISTANCE)
-    pen_tilt_x = ev(-9000, 9000, None) # pen tilt angle (ABS_TILT_X)
-    pen_tilt_y = ev(-9000, 9000, None) # pen tilt angle (ABS_TILT_Y)
-
-    def remap(self, x, y, max_x, max_y, monitor_width,
-            monitor_height, mode, orientation):
-        """remap pen coordinates to screen coordinates
-
-        TODO: consider rewriting this whole function as matrix transform
-        """
-        if orientation == 'bottom':
-            pass
-        if orientation == 'right':
-            x, y = y, max_x - x
-            max_x, max_y = max_y, max_x
-        if orientation == 'left':
-            x, y = max_y - y, x
-            max_x, max_y = max_y, max_x
-        if orientation == 'top':
-            x, y = max_x - x, max_y - y
-
-        ratio_width, ratio_height = monitor_width / max_x, monitor_height / max_y
-
-        if mode == 'fill':
-            scaling_x = max(ratio_width, ratio_height)
-            scaling_y = scaling_x
-        elif mode == 'fit':
-            scaling_x = min(ratio_width, ratio_height)
-            scaling_y = scaling_x
-        elif mode == 'stretch':
-            scaling_x = ratio_width
-            scaling_y = ratio_height
-        else:
-            raise NotImplementedError
-
-        return (
-            scaling_x * (x - (max_x - monitor_width / scaling_x) / 2),
-            scaling_y * (y - (max_y - monitor_height / scaling_y) / 2)
-        )
 
 
 def get_monitor(region, monitor_num, orientation):
@@ -301,6 +196,39 @@ def get_region(orientation):
     return window_bounds
 
 
+# remap wacom coordinates to screen coordinates
+def remap(x, y, pen_max_x, pen_max_y, monitor_width,
+          monitor_height, mode, orientation):
+
+    if orientation == 'right':
+        x, y = pen_max_x - x, pen_max_y - y
+    if orientation == 'left':
+        pass
+    if orientation == 'top':
+       x, y = pen_max_y - y, x
+       pen_max_x, pen_max_y = pen_max_y, pen_max_x
+    if orientation == 'bottom':
+       x, y = y, pen_max_x - x
+       pen_max_x, pen_max_y = pen_max_y, pen_max_x
+
+    ratio_width, ratio_height = monitor_width / pen_max_x, monitor_height / pen_max_y
+
+    if mode == 'fill':
+        scaling_x = max(ratio_width, ratio_height)
+        scaling_y = scaling_x
+    elif mode == 'fit':
+        scaling_x = min(ratio_width, ratio_height)
+        scaling_y = scaling_x
+    elif mode == 'stretch':
+        scaling_x = ratio_width
+        scaling_y = ratio_height
+    else:
+        raise NotImplementedError
+
+    return (
+        scaling_x * (x - (pen_max_x - monitor_width / scaling_x) / 2),
+        scaling_y * (y - (pen_max_y - monitor_height / scaling_y) / 2)
+    )
 
 # log evdev event to console
 def log_event(e_time, e_millis, e_type, e_code, e_value):

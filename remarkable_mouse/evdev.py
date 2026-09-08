@@ -8,7 +8,7 @@ from socket import timeout as TimeoutError
 import libevdev
 
 from .codes import codes, types
-from .common import get_monitor, log_event
+from .common import get_monitor, remap, log_event
 
 logging.basicConfig(format='%(message)s')
 log = logging.getLogger('remouse')
@@ -99,51 +99,45 @@ def read_tablet(rm, *, orientation, monitor_num, region, threshold, mode):
     stream = rm.pen
     while True:
         try:
-            # read evdev events from file stream
-            data = stream.read(struct.calcsize(rm.e_format))
+            data = stream.read(16)
         except TimeoutError:
             continue
 
-        # parse evdev events
-        e_time, e_millis, e_type, e_code, e_value = struct.unpack(rm.e_format, data)
+        e_time, e_millis, e_type, e_code, e_value = struct.unpack('2IHHi', data)
 
         if log.level == logging.DEBUG:
             log_event(e_time, e_millis, e_type, e_code, e_value)
 
-        try:
-            # intercept EV_ABS events and modify coordinates
-            if types[e_type] == 'EV_ABS':
-                # handle x direction
-                if codes[e_type][e_code] == 'ABS_X':
-                    x = e_value
+        # intercept EV_ABS events and modify coordinates
+        if types[e_type] == 'EV_ABS':
+            # handle x direction
+            if codes[e_type][e_code] == 'ABS_X':
+                x = e_value
 
-                # handle y direction
-                if codes[e_type][e_code] == 'ABS_Y':
-                    y = e_value
+            # handle y direction
+            if codes[e_type][e_code] == 'ABS_Y':
+                y = e_value
 
-                # map to screen coordinates so that region/monitor/orientation options are applied
-                mapped_x, mapped_y = rm.remap(
-                    x, y,
-                    rm.pen_x.max, rm.pen_y.max,
-                    monitor.width, monitor.height,
-                    mode, orientation
-                )
+            # map to screen coordinates so that region/monitor/orientation options are applied
+            mapped_x, mapped_y = remap(
+                x, y,
+                rm.pen_x.max, rm.pen_y.max,
+                monitor.width, monitor.height,
+                mode, orientation
+            )
 
-                mapped_x += monitor.x
-                mapped_y += monitor.y
+            mapped_x += monitor.x
+            mapped_y += monitor.y
 
-                # map back to wacom coordinates to reinsert into event
-                mapped_x = mapped_x * rm.pen_x.max / tot_width
-                mapped_y = mapped_y * rm.pen_y.max / tot_height
+            # map back to wacom coordinates to reinsert into event
+            mapped_x = mapped_x * rm.pen_x.max / tot_width
+            mapped_y = mapped_y * rm.pen_y.max / tot_height
 
-                # reinsert modified values into evdev event
-                if codes[e_type][e_code] == 'ABS_X':
-                    e_value = int(mapped_x)
-                if codes[e_type][e_code] == 'ABS_Y':
-                    e_value = int(mapped_y)
-
-        except KeyError as e:
-            log.debug(f"Invalid evdev event: type:{e_type} code:{e_code}")
+            # reinsert modified values into evdev event
+            if codes[e_type][e_code] == 'ABS_X':
+                e_value = int(mapped_x)
+            if codes[e_type][e_code] == 'ABS_Y':
+                e_value = int(mapped_y)
 
         # pass events directly to libevdev
         e_bit = libevdev.evbit(e_type, e_code)

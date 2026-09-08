@@ -13,8 +13,6 @@ import paramiko
 import paramiko.agent
 import paramiko.config
 
-from .common import reMarkable1, reMarkable2, reMarkablePro
-
 logging.basicConfig(format='%(message)s')
 log = logging.getLogger('remouse')
 
@@ -22,7 +20,8 @@ default_key = os.path.expanduser('~/.ssh/remarkable')
 config_path = os.path.expanduser('~/.ssh/config')
 
 
-def connect_rm(*, address, key, password):
+
+def open_rm_inputs(*, address, key, password):
     """
     Open a remote input device via SSH.
 
@@ -111,27 +110,26 @@ def connect_rm(*, address, key, password):
         'readlink -f /dev/input/touchscreen0'
     )[1].read().decode('utf8').rstrip('\n')
 
-    # detect reMarkable version
+    # handle both reMarkable versions
     # https://github.com/Eeems/oxide/issues/48#issuecomment-690830572
     if pen_file == '/dev/input/event0':
         # rM 1
-        rm = reMarkable1(client)
-    elif pen_file == '/dev/input/event1':
-        # rM 2
-        rm = reMarkable2(client)
-    elif pen_file == '/dev/input/event2':
-        # rM Pro
-        rm = reMarkablePro(client)
-    elif pen_file == '/dev/input/event3':
-        # rM Pro (seems to be a new software version)
-        rm = reMarkablePro(client)
+        touch_file = '/dev/input/event1'
+        button_file = '/dev/input/event2'
     else:
-        raise ValueError(f"Could not detect reMarkable version. {pen_file}")
+        # rM 2
+        touch_file = '/dev/input/event2'
+        button_file = '/dev/input/event0'
 
-    log.debug("Detected {type(rm).__name__}")
-    log.debug(f'Pen:{rm.pen_file}\nTouch:{rm.touch_file}\nButton:{rm.button_file}')
+    log.debug('Pen:{}\nTouch:{}\nButton:{}'.format(pen_file, touch_file, button_file))
 
-    return rm
+    # Start reading events
+    pen = client.exec_command('cat ' + pen_file)[1]
+    touch = client.exec_command('cat ' + touch_file)[1]
+    button = client.exec_command('cat ' + button_file)[1]
+
+    return {'pen': pen, 'touch': touch, 'button': button}
+
 
 def main():
     try:
@@ -140,13 +138,9 @@ def main():
         parser.add_argument('--key', type=str, metavar='PATH', help="ssh private key")
         parser.add_argument('--password', default=None, type=str, help="ssh password")
         parser.add_argument('--address', default='10.11.99.1', type=str, help="device address")
-        parser.add_argument('--mode', default='fill', choices=['fit', 'fill', 'stretch'], help="""Scale setting.
-        Fit (default): take up the entire tablet, but not necessarily the entire monitor.
-        Fill: take up the entire monitor, but not necessarily the entire tablet.
-        Stretch: take up both the entire tablet and monitor, but don't maintain aspect ratio.""")
-        parser.add_argument('--orientation', default='right', choices=['top', 'left', 'right', 'bottom'], help="position of tablet buttons")
+        parser.add_argument('--mode', default='fill', choices=['fit', 'fill'], help="scale setting")
+        parser.add_argument('--orientation', default='right', choices=['top', 'left', 'right', 'bottom'], help="position of charging port")
         parser.add_argument('--monitor', default=0, type=int, metavar='NUM', help="monitor to output to")
-        parser.add_argument('--region', action='store_true', default=False, help="Use a GUI to position the output area. Overrides --monitor")
         parser.add_argument('--threshold', metavar='THRESH', default=600, type=int, help="stylus pressure threshold (default 600)")
         parser.add_argument('--evdev', action='store_true', default=False, help="use evdev to support pen pressure (requires root, Linux only)")
 
@@ -160,7 +154,7 @@ def main():
 
         # ----- Connect to device -----
 
-        rm = connect_rm(
+        rm_inputs = open_rm_inputs(
             address=args.address,
             key=args.key,
             password=args.password,
@@ -176,10 +170,9 @@ def main():
             from remarkable_mouse.pynput import read_tablet
 
         read_tablet(
-            rm,
+            rm_inputs,
             orientation=args.orientation,
-            monitor_num=args.monitor,
-            region=args.region,
+            monitor_idx=args.monitor,
             threshold=args.threshold,
             mode=args.mode,
         )
