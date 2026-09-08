@@ -196,34 +196,35 @@ class Touchscreen(object):
             event = TouchEvent(ts, type, code, value)
             self._event_queue.put(event)
 
-    def _wait_for_events(self, timeout=2):
+    def _wait_for_events(self, timeout=150):
         return self._f_poll.poll(timeout)
 
     def poll(self):
         self._get_pending_events()
 
+        result = []
         while not self._event_queue.empty():
             event = self._event_queue.get()
             self._event_queue.task_done()
             if event.type == EV_ABS: # Absolute cursor position
                 if event.code == ABS_MT_SLOT:
                     self._touch_slot = event.value
-            
-                if event.code == ABS_MT_TRACKING_ID: 
+
+                if event.code == ABS_MT_TRACKING_ID:
                     self._current_touch.id = event.value
-            
+
                 if event.code == ABS_MT_POSITION_X:
                     self._current_touch.x = event.value
-            
+
                 if event.code == ABS_MT_POSITION_Y:
                     self._current_touch.y = event.value
 
             if event.type == EV_SYN: # Sync
                 for touch in self.touches:
                     touch.handle_events(self,event)
-                return self.touches
+                result = self.touches
 
-        return []
+        return result
 
 
     def read(self):

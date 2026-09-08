@@ -16,7 +16,7 @@ ev = namedtuple('ev_setting', ['min', 'max', 'res'])
 class reMarkable1:
     """Class holding some input settings for a reMarkable tablet
 
-    Args:
+    Args:           
         client (Paramiko SSH client, optional): an active SSH connection to the
             device for reading pen/touch/button inputs
     """
@@ -70,12 +70,12 @@ class reMarkable1:
     @property
     def touch(self):
         """(paramiko.ChannelFile) touch stream"""
-        return self.client.exec_command('cat ' + self.pen_file)[1]
+        return self.client.exec_command('cat ' + self.touch_file)[1]
 
     @property
     def button(self):
         """(paramiko.ChannelFile) button stream"""
-        return self.client.exec_command('cat ' + self.pen_file)[1]
+        return self.client.exec_command('cat ' + self.button_file)[1]
 
 class reMarkable2(reMarkable1):
     pen_file = '/dev/input/event1'
