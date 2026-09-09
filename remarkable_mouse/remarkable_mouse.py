@@ -31,7 +31,6 @@ def open_rm_inputs(*, address, key, password):
         password (str, optional): reMarkable ssh password
     Returns:
         (paramiko.ChannelFile): read-only stream of pen events
-        (paramiko.ChannelFile): read-only stream of touch events
         (paramiko.ChannelFile): read-only stream of button events
     """
     log.debug("Connecting to input '{}'".format(address))
@@ -114,21 +113,18 @@ def open_rm_inputs(*, address, key, password):
     # https://github.com/Eeems/oxide/issues/48#issuecomment-690830572
     if pen_file == '/dev/input/event0':
         # rM 1
-        touch_file = '/dev/input/event1'
         button_file = '/dev/input/event2'
     else:
         # rM 2
-        touch_file = '/dev/input/event2'
         button_file = '/dev/input/event0'
 
-    log.debug('Pen:{}\nTouch:{}\nButton:{}'.format(pen_file, touch_file, button_file))
+    log.debug('Pen:{}\nButton:{}'.format(pen_file, button_file))
 
     # Start reading events
     pen = client.exec_command('cat ' + pen_file)[1]
-    touch = client.exec_command('cat ' + touch_file)[1]
     button = client.exec_command('cat ' + button_file)[1]
 
-    return {'pen': pen, 'touch': touch, 'button': button}
+    return {'pen': pen, 'button': button}
 
 
 def main():

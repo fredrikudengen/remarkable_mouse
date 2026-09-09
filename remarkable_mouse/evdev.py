@@ -37,7 +37,6 @@ def create_local_device(rm):
     # Enable buttons supported by the digitizer
     device.enable(libevdev.EV_KEY.BTN_TOOL_PEN)
     device.enable(libevdev.EV_KEY.BTN_TOOL_RUBBER)
-    device.enable(libevdev.EV_KEY.BTN_TOUCH)
     device.enable(libevdev.EV_KEY.BTN_STYLUS)
     device.enable(libevdev.EV_KEY.BTN_STYLUS2)
     device.enable(libevdev.EV_KEY.BTN_0)
@@ -45,17 +44,6 @@ def create_local_device(rm):
     device.enable(libevdev.EV_KEY.BTN_2)
 
     inputs = (
-        # touch inputs
-        (libevdev.EV_ABS.ABS_MT_POSITION_X, *rm.touch_x),
-        (libevdev.EV_ABS.ABS_MT_POSITION_Y, *rm.touch_y),
-        (libevdev.EV_ABS.ABS_MT_PRESSURE, *rm.touch_pressure),
-        (libevdev.EV_ABS.ABS_MT_TOUCH_MAJOR, *rm.touch_major),
-        (libevdev.EV_ABS.ABS_MT_TOUCH_MINOR, *rm.touch_minor),
-        (libevdev.EV_ABS.ABS_MT_ORIENTATION, *rm.touch_orient),
-        (libevdev.EV_ABS.ABS_MT_SLOT, *rm.touch_slot),
-        (libevdev.EV_ABS.ABS_MT_TOOL_TYPE, *rm.touch_tool),
-        (libevdev.EV_ABS.ABS_MT_TRACKING_ID, *rm.touch_trackid),
-
         # pen inputs
         (libevdev.EV_ABS.ABS_X, *rm.pen_x), # cyttps5_mt driver
         (libevdev.EV_ABS.ABS_Y, *rm.pen_y), # cyttsp5_mt

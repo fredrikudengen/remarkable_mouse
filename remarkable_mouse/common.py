@@ -16,40 +16,28 @@ ev = namedtuple('ev_setting', ['min', 'max', 'res'])
 class reMarkable1:
     """Class holding some input settings for a reMarkable tablet
 
-    Args:           
+    Args:
         client (Paramiko SSH client, optional): an active SSH connection to the
-            device for reading pen/touch/button inputs
+            device for reading pen/button inputs
     """
 
-    r"""Coordinate systems
+    r"""Coordinate system
 
-        PEN          TOUCH
-    +---------+   +---------+
-    | X       |   |       Y |
-    | |       |   |       | |
-    | |       |   |       | |
-    | +--- Y  |   |  X ---+ |
-    |         |   |         |
-    |---------|   |---------|
-    | USB PORT|   | USB PORT|
-    +---------+   +---------+
+        PEN
+    +---------+
+    | X       |
+    | |       |
+    | |       |
+    | +--- Y  |
+    |         |
+    |---------|
+    | USB PORT|
+    +---------+
     """
 
     # evdev input file
     pen_file = '/dev/input/event0'
-    touch_file = '/dev/input/event2'
     button_file = '/dev/input/event1'
-
-    # stylus evdev settings (min, max, resolution)
-    touch_x = ev(0, 20967, 100) # touchscreen X coordinate (ABS_MT_POSITION_X)
-    touch_y = ev(0, 15725, 100) # touchscreen Y coordinate (ABS_MT_POSITION_Y)
-    touch_pressure = ev(0, 4095, None) # touchscreen pressure (ABS_MT_PRESSURE)
-    touch_major = ev(0, 255, None) # touch area major axis (ABS_MT_TOUCH_MAJOR)
-    touch_minor = ev(0, 255, None) # touch area minor axis (ABS_MT_TOUCH_MINOR)
-    touch_orient = ev(-127, 127, None) # touch orientation (ABS_MT_ORIENTATION)
-    touch_slot = ev(0, 31, None) # tool slot ID (ABS_MT_SLOT)
-    touch_tool = ev(0, 1, None) # tool type (ABS_MT_TOOL_TYPE)
-    touch_trackid = ev(0, 65535, None) # tool tracking id (ABS_MT_TRACKING_ID)
 
     # pen evdev settings (min, max, resolution)
     pen_x = ev(0, 20967, 100) # pen X coordinate (ABS_X)
@@ -68,31 +56,17 @@ class reMarkable1:
         return self.client.exec_command('cat ' + self.pen_file)[1]
 
     @property
-    def touch(self):
-        """(paramiko.ChannelFile) touch stream"""
-        return self.client.exec_command('cat ' + self.touch_file)[1]
-
-    @property
     def button(self):
         """(paramiko.ChannelFile) button stream"""
         return self.client.exec_command('cat ' + self.button_file)[1]
 
 class reMarkable2(reMarkable1):
     pen_file = '/dev/input/event1'
-    touch_file = '/dev/input/event2'
     button_file = '/dev/input/event0'
 
 class reMarkablePro(reMarkable1):
     pen_file = '/dev/input/event2'
-    touch_file = '/dev/input/event3'
     button_file = '/dev/input/event0'
-    # stylus evdev settings (min, max, resolution)
-    touch_x = ev(0, 2064, 2064) # touchscreen X coordinate (ABS_MT_POSITION_X)
-    touch_y = ev(0, 2832, 2832) # touchscreen Y coordinate (ABS_MT_POSITION_Y)
-    touch_pressure = ev(0, 255, None) # touchscreen pressure (ABS_MT_PRESSURE)
-    touch_orient = ev(-127, 127, None) # touch orientation (ABS_MT_ORIENTATION)
-    touch_slot = ev(0, 9, None) # tool slot ID (ABS_MT_SLOT)
-    touch_tool = ev(0, 2, None) # tool type (ABS_MT_TOOL_TYPE)
 
 
 def get_monitor(region, monitor_num, orientation):

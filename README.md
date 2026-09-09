@@ -23,14 +23,6 @@ By default, `10.11.99.1` is used as the address.  Find your password in the reMa
 
 To use the `--region` flag, you may need to install the `python3-tk` or `python3-tkinter` package with your package manager.
 
-# Gestures
-
-When using the default (pynput) backend, touchscreen input is mapped to the following gestures:
-
-- 2 fingers, moving together: scroll
-- 2 fingers, moving apart/together (pinch): zoom, sent as Ctrl+Scroll
-- 3 fingers: click-and-drag
-
 # Examples
 
 specify monitor, orientation, password
